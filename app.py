@@ -14,38 +14,45 @@ class InventoryApp:
         self.root = root
         self.root.title("Inventaire")
         self.root.geometry("1000x800")
-
         self.data = InventoryData()
-        self.create_widgets()
+
+        # Create a notebook (tab container)
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(expand=True, fill="both")
+        self.inventory_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.inventory_frame, text="Stock")
+        self.sold_items_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.sold_items_frame, text="Vendus")
+
+        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
+
+        # Create widgets for each tab
+        self.create_inventory_widgets(self.inventory_frame)
+        self.create_sold_items_widgets(self.sold_items_frame)
+
         self.refresh_list()
         self.uptade_button_state(None)
 
-    def create_widgets(self):
+    def create_inventory_widgets(self, frame: ttk.Frame):
         self.root.bind("<Escape>", self.escape_key)
 
-        main_frame = ttk.Frame(self.root)
+        main_frame = ttk.Frame(frame)
         main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.button_frame = ttk.Frame(main_frame)
-        self.button_frame.grid(in_=main_frame, row=3, column=0, sticky=tk.NSEW)
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(in_=main_frame, row=3, column=0, sticky=tk.NSEW)
 
-        self.add_button = ttk.Button(
-            self.button_frame, text="Ajouter", command=self.add_item
-        )
+        self.add_button = ttk.Button(button_frame, text="Ajouter", command=self.add_item)
         self.add_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
-        self.sell_button = ttk.Button(
-            self.button_frame, text="Vendre", command=self.sell_item
-        )
+        self.sell_button = ttk.Button(button_frame, text="Vendre", command=self.sell_item)
         self.sell_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
-        self.edit_button = ttk.Button(
-            self.button_frame, text="Editer", command=self.edit_item
-        )
+        self.edit_button = ttk.Button(button_frame, text="Editer", command=self.edit_item)
         self.edit_button.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.delete_button = ttk.Button(
-            self.button_frame, text="Supprimer", command=self.delete_item
+            button_frame, text="Supprimer", command=self.delete_item
         )
         self.delete_button.pack(side=tk.LEFT, padx=5, pady=5)
 
@@ -74,6 +81,9 @@ class InventoryApp:
 
         main_frame.rowconfigure(0, weight=1)
         main_frame.columnconfigure(0, weight=1)
+
+    def create_sold_items_widgets(self, frame):
+        ...
 
     def refresh_list(self):
         for item in self.tree.get_children():
@@ -180,36 +190,39 @@ class InventoryApp:
             }
             self.data.edit_item(item_id, updated_item)
             self.refresh_list()
-            edit_window.destroy()
+            main_window.destroy()
 
         item_id = self.tree.item(selected_item, "values")[0]
         item = self.data.load_data()[int(item_id) - 1]
 
-        edit_window = ttk.Toplevel(self.root)
-        edit_window.title("Editer un item")
-        edit_window.geometry("300x200")
+        main_window = tk.Toplevel(self.root)
+        main_window.title("Ajouter un item")
+        main_window.geometry("300x200")
 
-        ttk.Label(edit_window, text="Nom:").grid(row=0, column=0)
-        entry_name = ttk.Entry(edit_window)
+        main_frame = ttk.Frame(main_window)
+        main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        ttk.Label(main_frame, text="Nom:").grid(row=0, column=0)
+        entry_name = ttk.Entry(main_frame)
         entry_name.insert(0, item["nom"])
         entry_name.grid(row=0, column=1)
 
-        ttk.Label(edit_window, text="Taille:").grid(row=1, column=0)
-        entry_size = ttk.Entry(edit_window)
+        ttk.Label(main_frame, text="Taille:").grid(row=1, column=0)
+        entry_size = ttk.Entry(main_frame)
         entry_size.insert(0, item["taille"])
         entry_size.grid(row=1, column=1)
 
-        ttk.Label(edit_window, text="Marque:").grid(row=2, column=0)
-        entry_brand = ttk.Entry(edit_window)
+        ttk.Label(main_frame, text="Marque:").grid(row=2, column=0)
+        entry_brand = ttk.Entry(main_frame)
         entry_brand.insert(0, item["marque"])
         entry_brand.grid(row=2, column=1)
 
-        ttk.Label(edit_window, text="Note:").grid(row=3, column=0)
-        entry_note = ttk.Entry(edit_window)
+        ttk.Label(main_frame, text="Note:").grid(row=3, column=0)
+        entry_note = ttk.Entry(main_frame)
         entry_note.insert(0, item["note"])
         entry_note.grid(row=3, column=1)
 
-        submit_button = ttk.Button(edit_window, text="Editer", command=submit)
+        submit_button = ttk.Button(main_frame, text="Editer", command=submit)
         submit_button.grid(row=4, column=1)
 
     def sell_item(self):
@@ -245,6 +258,10 @@ class InventoryApp:
             self.delete_button.config(state=tk.DISABLED)
         else:
             self.delete_button.config(state=tk.NORMAL)
+
+    def on_tab_selected(self, event):
+        # Ensures the tab is fully drawn at click time
+        self.notebook.update_idletasks()
 
 
 def main():
