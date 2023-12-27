@@ -13,7 +13,7 @@ class InventoryApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Inventaire")
-        self.root.geometry("1000x500")
+        self.root.geometry("1000x800")
 
         self.data = InventoryData()
         self.create_widgets()
@@ -21,6 +21,8 @@ class InventoryApp:
         self.uptade_button_state(None)
 
     def create_widgets(self):
+        self.root.bind("<Escape>", self.escape_key)
+
         main_frame = ttk.Frame(self.root)
         main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
@@ -32,15 +34,20 @@ class InventoryApp:
         )
         self.add_button.pack(side=tk.RIGHT, padx=5, pady=5)
 
+        self.sell_button = ttk.Button(
+            self.button_frame, text="Vendre", command=self.sell_item
+        )
+        self.sell_button.pack(side=tk.RIGHT, padx=5, pady=5)
+
         self.edit_button = ttk.Button(
             self.button_frame, text="Editer", command=self.edit_item
         )
-        self.edit_button.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.edit_button.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.delete_button = ttk.Button(
             self.button_frame, text="Supprimer", command=self.delete_item
         )
-        self.delete_button.pack(side=tk.RIGHT, padx=5, pady=5)
+        self.delete_button.pack(side=tk.LEFT, padx=5, pady=5)
 
         self.tree = ttk.Treeview(
             main_frame,
@@ -205,6 +212,9 @@ class InventoryApp:
         submit_button = ttk.Button(edit_window, text="Editer", command=submit)
         submit_button.grid(row=4, column=1)
 
+    def sell_item(self):
+        ...
+
     def autosize_columns(self):
         for i in range(len(self.tree["columns"]))[:-1]:
             w = tkfont.Font().measure(self.tree.heading(i, "text"))
@@ -218,12 +228,23 @@ class InventoryApp:
         if self.tree.identify_row(event.y) == "":
             self.tree.selection_remove(self.tree.selection())
 
+    def escape_key(self, event):
+        self.tree.selection_remove(self.tree.selection())
+
     def uptade_button_state(self, event):
-        selected_item = self.tree.selection()
-        if len(selected_item) != 1:
+        selected_items = self.tree.selection()
+
+        if len(selected_items) != 1:
             self.edit_button.config(state=tk.DISABLED)
+            self.sell_button.config(state=tk.DISABLED)
         else:
             self.edit_button.config(state=tk.NORMAL)
+            self.sell_button.config(state=tk.NORMAL)
+
+        if len(selected_items) == 0:
+            self.delete_button.config(state=tk.DISABLED)
+        else:
+            self.delete_button.config(state=tk.NORMAL)
 
 
 def main():
