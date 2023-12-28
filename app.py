@@ -24,17 +24,17 @@ class InventoryApp:
         self.sold_items_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.sold_items_frame, text="Vendus")
 
-        self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_selected)
+        self.notebook.bind("<<NotebookTabChanged>>", lambda _: self.on_tab_selected())
 
         # Create widgets for each tab
         self.create_inventory_widgets(self.inventory_frame)
         self.create_sold_items_widgets(self.sold_items_frame)
 
         self.refresh_list()
-        self.uptade_button_state(None)
+        self.uptade_button_state()
 
     def create_inventory_widgets(self, frame: ttk.Frame):
-        self.root.bind("<Escape>", self.escape_key)
+        self.root.bind("<Escape>", lambda _: self.on_escape_key())
 
         main_frame = ttk.Frame(frame)
         main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -72,8 +72,8 @@ class InventoryApp:
         self.x_scrollbar = ttk.Scrollbar(orient=tk.HORIZONTAL, command=self.tree.xview)
         self.tree["yscroll"] = self.y_scrollbar.set
         self.tree["xscroll"] = self.x_scrollbar.set
-        self.tree.bind("<Button-1>", self.treeview_click)
-        self.tree.bind("<<TreeviewSelect>>", self.uptade_button_state)
+        self.tree.bind("<Button-1>", lambda e: self.on_treeview_click(e.y))
+        self.tree.bind("<<TreeviewSelect>>", lambda _: self.uptade_button_state())
 
         self.tree.grid(in_=main_frame, row=0, column=0, sticky=tk.NSEW)
         self.y_scrollbar.grid(in_=main_frame, row=0, column=1, sticky=tk.NS)
@@ -83,7 +83,7 @@ class InventoryApp:
         main_frame.columnconfigure(0, weight=1)
 
     def create_sold_items_widgets(self, frame):
-        ...
+        pass
 
     def refresh_list(self):
         for item in self.tree.get_children():
@@ -237,14 +237,23 @@ class InventoryApp:
 
     # Event handlers
 
-    def treeview_click(self, event):
-        if self.tree.identify_row(event.y) == "":
+    def on_treeview_click(self, y):
+        if self.tree.identify_row(y) == "":
             self.tree.selection_remove(self.tree.selection())
 
-    def escape_key(self, event):
+    def on_escape_key(self):
         self.tree.selection_remove(self.tree.selection())
 
-    def uptade_button_state(self, event):
+    def on_tab_selected(self):
+        # Ensures the tab is fully drawn at click time
+        self.notebook.update_idletasks()
+
+    def autocomplete(self, txt, lst):
+        if not txt:
+            return lst
+        return [x for x in lst if x.startswith(txt)]
+
+    def uptade_button_state(self):
         selected_items = self.tree.selection()
 
         if len(selected_items) != 1:
