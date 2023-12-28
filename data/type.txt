@@ -1,0 +1,35 @@
+T-shirt
+Chemise
+Pantalon
+Jeans
+Short
+Jupe
+Robe
+Blouse
+Pull
+Cardigan
+Veste
+Manteau
+Blazer
+Costume
+Sweat-shirt
+Legging
+Collants
+Maillot de bain
+Sous-vêtements
+Chaussettes
+Écharpe
+Gants
+Bonnet
+Chapeau
+Casquette
+Chaussures
+Baskets
+Bottes
+Sandales
+Talons
+Ceinture
+Foulard
+Cravate
+Noeud papillon
+Pyjama

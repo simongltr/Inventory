@@ -2,19 +2,24 @@ import random
 import string
 import tkinter as tk
 import tkinter.font as tkfont
+from datetime import datetime
 from tkinter import messagebox, ttk
 
 from ttkthemes import ThemedTk
 
-from config import FORM_LABELS
-from db import InventoryData
+from autocomplete import STOCK_FIELD_PROPOSITIONS
+from customWidgets import AutocompleteCombobox, AutocompleteEntry
+from db import STOCK_FIELDS, InventoryData
+
+MAIN_GEOMETRY = "1000x800"
+FORM_GEOMETRY = "400x300"
 
 
 class InventoryApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Inventaire")
-        self.root.geometry("1000x800")
+        self.root.geometry(MAIN_GEOMETRY)
         self.data = InventoryData()
 
         # Create a notebook (tab container)
@@ -61,12 +66,12 @@ class InventoryApp:
 
         self.tree = ttk.Treeview(
             main_frame,
-            columns=("ID", *FORM_LABELS),
+            columns=("ID", *STOCK_FIELDS),
             show="headings",
             selectmode="extended",
         )
         self.tree.heading("ID", text="ID")
-        for label in FORM_LABELS:
+        for label in STOCK_FIELDS:
             self.tree.heading(label, text=label)
 
         self.y_scrollbar = ttk.Scrollbar(orient=tk.VERTICAL, command=self.tree.yview)
@@ -89,13 +94,13 @@ class InventoryApp:
     def refresh_list(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
-        for item in self.data.load_data():
+        for item in self.data.list_stock():
             self.tree.insert(
                 "",
                 "end",
                 values=(
                     item["ID"],
-                    *tuple(item[label] for label in FORM_LABELS),
+                    *tuple(item[label] for label in STOCK_FIELDS),
                 ),
             )
         self.autosize_columns()
@@ -105,45 +110,29 @@ class InventoryApp:
             initial_values = {}
 
         entries = {}
-        for i, label in enumerate(FORM_LABELS):
-            ttk.Label(frame, text=label).grid(
-                row=i, column=0, sticky=tk.W, padx=5, pady=5
-            )
-            entry = ttk.Entry(frame)
-            entry.grid(row=i, column=1, sticky=tk.EW, padx=5, pady=5)
+        for i, label in enumerate(STOCK_FIELDS):
+            l = ttk.Label(frame, text=f"{label}:")
+            l.grid(row=i, column=0, sticky=tk.W, padx=[15, 5], pady=5)
+            if label in STOCK_FIELD_PROPOSITIONS:
+                entry = AutocompleteCombobox(frame)
+                entry.set_completion_list(STOCK_FIELD_PROPOSITIONS[label])
+            else:
+                entry = ttk.Entry(frame)
+            entry.grid(row=i, column=1, sticky=tk.EW, padx=[0, 5], pady=5)
             entry.insert(0, initial_values.get(label, ""))
 
             entries[label] = entry
         return entries
 
-    def test_form(self):
-        def submit():
-            item = {name: entries[name].get() for name in FORM_LABELS}
-            self.data.add_item(item)
-            self.refresh_list()
-            main_window.destroy()
-
-        main_window = tk.Toplevel(self.root)
-        main_window.title("Ajouter un item")
-        main_window.geometry("300x200")
-
-        main_frame = ttk.Frame(main_window)
-        main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        entries = self.create_form(main_frame)
-
-        submit_button = ttk.Button(main_frame, text="Ajouter", command=submit)
-        submit_button.grid(row=4, column=1)
-
     def add_item(self):
         def submit():
-            item = {name: entries[name].get() for name in FORM_LABELS}
-            self.data.add_item(item)
+            item = {name: entries[name].get() for name in STOCK_FIELDS}
+            self.data.add_item_to_stock(item)
             self.refresh_list()
             main_window.destroy()
 
         def randomize_fields():
-            for label in FORM_LABELS:
+            for label in STOCK_FIELDS:
                 entries[label].delete(0, tk.END)
                 entries[label].insert(
                     0, "".join(random.choices(string.ascii_letters, k=15))
@@ -151,25 +140,26 @@ class InventoryApp:
 
         main_window = tk.Toplevel(self.root)
         main_window.title("Ajouter un item")
-        main_window.geometry("300x200")
+        main_window.geometry(FORM_GEOMETRY)
 
         main_frame = ttk.Frame(main_window)
         main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         entries = self.create_form(main_frame)
+        entries["Date"].delete(0, tk.END)
+        entries["Date"].insert(0, datetime.now().strftime("%Y-%m-%d"))
+        # randomize_fields()
+
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(len(FORM_GEOMETRY), weight=1)
 
         submit_button = ttk.Button(main_frame, text="Ajouter", command=submit)
-        submit_button.grid(row=4, column=1)
-
-        randomize_button = ttk.Button(
-            main_frame, text="Randomize", command=randomize_fields
-        )
-        randomize_button.grid(row=5, column=1)
+        submit_button.grid(row=len(STOCK_FIELDS), column=1, padx=50, pady=5, sticky=tk.EW)
 
     def edit_item(self):
         def submit():
-            new_item = {name: entries[name].get() for name in FORM_LABELS}
-            self.data.edit_item(item_id, new_item)
+            new_item = {name: entries[name].get() for name in STOCK_FIELDS}
+            self.data.edit_item_from_stock(item_id, new_item)
             self.refresh_list()
             main_window.destroy()
 
@@ -179,19 +169,22 @@ class InventoryApp:
             return
 
         item_id = self.tree.item(selected_item, "values")[0]
-        item = self.data.load_item(item_id)
+        item = self.data.get_from_stock(item_id)
 
         main_window = tk.Toplevel(self.root)
         main_window.title("Modifier un item")
-        main_window.geometry("300x200")
+        main_window.geometry(FORM_GEOMETRY)
 
         main_frame = ttk.Frame(main_window)
         main_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         entries = self.create_form(main_frame, item)
 
+        main_frame.columnconfigure(1, weight=1)
+        main_frame.rowconfigure(len(FORM_GEOMETRY), weight=1)
+
         submit_button = ttk.Button(main_frame, text="Modifier", command=submit)
-        submit_button.grid(row=4, column=1)
+        submit_button.grid(row=len(STOCK_FIELDS), column=1, padx=50, pady=5, sticky=tk.EW)
 
     def delete_item(self):
         selected_items = self.tree.selection()
@@ -206,7 +199,7 @@ class InventoryApp:
         ):
             for item in selected_items:
                 item_id = self.tree.item(item, "values")[0]
-                self.data.delete_item(item_id)
+                self.data.delete_item_from_stock(item_id)
             self.refresh_list()
 
     def sell_item(self):
@@ -254,7 +247,7 @@ class InventoryApp:
 
 
 def main():
-    window = ThemedTk(theme="arc")
+    window = ThemedTk(theme="Adapta")
     app = InventoryApp(window)
     window.mainloop()
 
