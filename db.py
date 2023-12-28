@@ -1,5 +1,7 @@
 import sqlite3
 
+from config import FORM_LABELS
+
 
 class InventoryData:
     def __init__(self):
@@ -9,8 +11,7 @@ class InventoryData:
 
     def initialize_database(self):
         self.cursor.execute(
-            """CREATE TABLE IF NOT EXISTS items 
-                               (id INTEGER PRIMARY KEY, nom TEXT, taille TEXT, marque TEXT, note TEXT)"""
+            f"CREATE TABLE IF NOT EXISTS items (ID INTEGER PRIMARY KEY, {', '.join(map(lambda label: f'{label} TEXT', FORM_LABELS))})"
         )
         self.conn.commit()
 
@@ -18,34 +19,36 @@ class InventoryData:
         self.cursor.execute("SELECT * FROM items")
         return [
             {
-                "id": row[0],
-                "nom": row[1],
-                "taille": row[2],
-                "marque": row[3],
-                "note": row[4],
+                "ID": row[0],
+                **{label: row[i] for i, label in enumerate(FORM_LABELS, start=1)},
             }
             for row in self.cursor.fetchall()
         ]
 
+    def load_item(self, item_id):
+        self.cursor.execute("SELECT * FROM items WHERE ID = ?", (item_id,))
+        row = self.cursor.fetchone()
+        return {
+            "ID": row[0],
+            **{label: row[i] for i, label in enumerate(FORM_LABELS, start=1)},
+        }
+
     def add_item(self, item):
         self.cursor.execute(
-            "INSERT INTO items (nom, taille, marque, note) VALUES (?, ?, ?, ?)",
-            (item["nom"], item["taille"], item["marque"], item["note"]),
+            f"INSERT INTO items ({', '.join(FORM_LABELS)}) VALUES (?, ?, ?, ?)",
+            tuple(item[label] for label in FORM_LABELS),
         )
         self.conn.commit()
 
     def delete_item(self, item_id):
-        self.cursor.execute("DELETE FROM items WHERE id = ?", (item_id,))
+        self.cursor.execute("DELETE FROM items WHERE ID = ?", (item_id,))
         self.conn.commit()
 
     def edit_item(self, item_id, new_item):
         self.cursor.execute(
-            "UPDATE items SET nom = ?, taille = ?, marque = ?, note = ? WHERE id = ?",
+            f"UPDATE items SET {', '.join(map(lambda label: f'{label} = ?', FORM_LABELS))} WHERE ID = ?",
             (
-                new_item["nom"],
-                new_item["taille"],
-                new_item["marque"],
-                new_item["note"],
+                *tuple(new_item[label] for label in FORM_LABELS),
                 item_id,
             ),
         )
